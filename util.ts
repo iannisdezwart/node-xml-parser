@@ -39,3 +39,13 @@ export const isValidTagChar = (char: string) => {
 export const isValidTag = (tag: string) => {
 	return isValidTagStartChar(tag.charAt(0)) && isValidTagChar(tag.substr(1))
 }
+
+export const objToMap = (obj: { [ key: string ]: string }) => {
+	const map = new Map<string, string>()
+
+	for (const key in obj) {
+		map.set(key, obj[key])
+	}
+
+	return map
+}

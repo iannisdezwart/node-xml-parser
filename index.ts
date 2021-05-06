@@ -1,37 +1,75 @@
-import * as fs from 'fs'
-import { isWhitespace, whitespace } from './util'
+import { isWhitespace, objToMap, whitespace } from './util'
 
 interface XMLNodeAttribute {
 	key: string
 	value: string
 }
 
+/**
+ * A structure representing a single XML node.
+ * This structure holds its tag name, attributes, and children.
+ */
 export class XMLNode {
 	tag: string
 	attributes: Map<string, string>
 	children: XMLNode[]
-	text: string[]
 
-	constructor(tag: string, attributes: Map<string, string>) {
+	/**
+	 * Creates an XMLNode.
+	 * @param { string } tag - The tag name of the XMLNode.
+	 * @param { { [ string ]: string } } attributes - The attributes of the XMLNode.
+	 * @param { (XMLNode | string)[] } children - The children of the XMLNode.
+	 * Defaults to an empty array.
+	 */
+	constructor(tag: string, attributes: { [ key: string ]: string }, children: (XMLNode | string)[] = []) {
 		this.tag = tag
-		this.attributes = attributes
-		this.children = []
-		this.text = []
+		this.attributes = objToMap(attributes)
+		this.children = children.map(child => {
+			if (typeof child == 'string') {
+				return XMLNode.createRaw('@text', new Map<string, string>([ [ 'data', child ] ]))
+			}
+
+			return child
+		})
 	}
 
+	/**
+	 * Appends an XMLNode to the child list of this XMLNode.
+	 */
 	appendChild(node: XMLNode) {
 		this.children.push(node)
 	}
 
+	/**
+	 * Appends a text node to the child list of this XMLNode.
+	 */
 	appendText(text: string) {
-		const node = new XMLNode('@text', new Map<string, string>([ [ 'data', text ] ]))
+		const node = new XMLNode('@text', { data: text })
 		this.children.push(node)
 	}
 
+	/**
+	 * Collects all inner text nodes and returns them concatenated as a string.
+	 */
+	innerText() {
+		return this.children
+			.filter(child => child.tag == '@text')
+			.join(' ')
+	}
+
+	/**
+	 * Recursive depth-first search algorithm, used for traversing the XML tree.
+	 * @param { (node: XMLNode, depth: number) => void } beforeCallback
+	 * - Is called before children are traversed.
+	 * @param { (node: XMLNode, depth: number => void } afterCallback
+	 * - Is called after children are traversed.
+	 * @param { number } depth - Internally used for the callbacks.
+	 * Starts at zero
+	 */
 	dfs(
 		beforeCallback: (node: XMLNode, depth: number) => void,
 		afterCallback: (node: XMLNode, depth: number) => void,
-		depth: number
+		depth: number = 0
 	) {
 		beforeCallback(this, depth)
 
@@ -41,9 +79,26 @@ export class XMLNode {
 
 		afterCallback(this, depth)
 	}
+
+	/**
+	 * Creates an XMLNode.
+	 * @param { string } tag - The tag name of the XMLNode.
+	 * @param { Map<string, string> } attributes - The attributes of the XMLNode.
+	 */
+	static createRaw(tag: string, attributes: Map<string, string>) {
+		const node = {
+			tag: tag,
+			attributes: attributes,
+			children: []
+		} as XMLNode
+
+		Object.setPrototypeOf(node, XMLNode.prototype)
+
+		return node
+	}
 }
 
-export class XMLParser {
+class XMLParser {
 	xml: string
 	i: number
 	nodes: XMLNode[]
@@ -79,7 +134,7 @@ export class XMLParser {
 	}
 
 	addNode(tag: string, attributes: Map<string, string>) {
-		const newNode = new XMLNode(tag, attributes)
+		const newNode = XMLNode.createRaw(tag, attributes)
 		if (this.nodes.length > 0) this.lastNode().children.push(newNode)
 		this.nodes.push(newNode)
 	}
@@ -127,7 +182,7 @@ export class XMLParser {
 	matchUntilChar(chars: string[]) {
 		let str = ''
 
-		while (true) {
+		while (this.i < this.xml.length) {
 			const c = this.peekChars(0, 1)
 
 			for (const char of chars) {
@@ -139,6 +194,8 @@ export class XMLParser {
 			this.i++
 			str += c
 		}
+
+		throw new Error(`Unexpected EOF.`)
 	}
 
 	matchUntilString(str: string) {
@@ -167,24 +224,23 @@ export class XMLParser {
 		}
 
 		const tag = this.matchUntilChar([ ...whitespace, '/', '>' ])
-		const nextChar = this.getChar()
+		let nextChar = this.getChar()
 		let attributes: Map<string, string>
 
 		if (isWhitespace(nextChar)) {
 			attributes = this.matchAttributes()
+			nextChar = this.getChar()
 		} else {
 			attributes = new Map<string, string>()
 		}
 
 		this.addNode(tag, attributes)
 
-		const endStartTagChar = this.getChar()
-
-		if (endStartTagChar == '/') {
+		if (nextChar == '/') {
 			this.assertChar(this.getChar(), [ '>' ])
 			this.popNode()
 		} else {
-			this.assertChar(endStartTagChar, [ '>' ])
+			this.assertChar(nextChar, [ '>' ])
 		}
 	}
 
@@ -258,7 +314,7 @@ interface XMLBuilderOptions {
 	enableSelfClosingTags?: boolean
 }
 
-export class XMLBuilder {
+class XMLBuilder {
 	root: XMLNode
 	options: XMLBuilderOptions
 
@@ -314,5 +370,39 @@ export class XMLBuilder {
 		)
 
 		return res
+	}
+}
+
+/**
+ * Parses an XML string into an XML structure.
+ * @param { string } xml - The XML string to parse.
+ */
+export const parseXML = (xml: string) => {
+	const parser = new XMLParser(xml)
+	return parser.parse()
+}
+
+/**
+ * Builds an XML string from an XML structure.
+ * @param { XMLNode } rootNode - The root node of the XML structure.
+ * @param { XMLBuilderOptions } options - Options for building the XML.
+ */
+export const buildXML = (rootNode: XMLNode, options: XMLBuilderOptions = {}) => {
+	const builder = new XMLBuilder(rootNode, options)
+	return builder.build()
+}
+
+/**
+ * Returns true if the given XML string is valid, false if it is invalid.
+ * @param { string } xml - The XML string to check.
+ */
+export const validateXML = (xml: string) => {
+	const parser = new XMLParser(xml)
+
+	try {
+		parser.parse()
+		return true
+	} catch (err) {
+		return false
 	}
 }
