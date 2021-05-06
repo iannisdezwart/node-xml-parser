@@ -330,7 +330,8 @@ class XMLBuilder {
 	}
 
 	indentation(depth: number) {
-		return (this.options.indentationType == 'tabs' ? '\t' : ' ').repeat(depth)
+		return (this.options.indentationType == 'tabs' ? '\t' : ' ')
+			.repeat(this.options.indentationSize * depth)
 	}
 
 	build() {
