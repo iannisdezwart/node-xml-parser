@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "watch": true,
+    "lib": [
+      "dom",
+      "esnext"
+    ],
+		"downlevelIteration": true
+  }
+}
