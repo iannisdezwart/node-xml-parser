@@ -69,7 +69,7 @@ const xml = new XMLNode('document', {}, [
 	'!'
 ])
 
-buildXML(xml)
+buildXML(xml, { indentationSize: 2, indentationType: 'spaces' })
 
 /*
 	Prettiest output you have ever seen:
@@ -81,4 +81,15 @@ buildXML(xml)
 		!
 	</document>
 */
+```
+
+Options for `buildXML`:
+
+```ts
+interface XMLBuilderOptions {
+	indentationSize: number             // Default: 1
+	indentationType: 'tabs' | 'spaces'  // Default: 'tabs'
+	seperator: string                   // Default: '\n'
+	enableSelfClosingTags: boolean      // Default: true
+}
 ```
