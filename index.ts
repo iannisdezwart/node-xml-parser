@@ -149,6 +149,7 @@ class XMLParser {
 			if (isWhitespace(char)) continue
 
 			if (char != '<') {
+				this.i--
 				this.lastNode().appendText(this.matchText())
 				char = this.getChar()
 			}
