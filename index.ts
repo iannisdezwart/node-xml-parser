@@ -270,9 +270,10 @@ class XMLParser {
 		this.matchUntilChar([ '=' ])
 		this.i++
 
-		this.matchUntilChar([ '"' ])
+		this.matchUntilChar([ '"', '\'' ])
+		const quote = this.peekChars()
 		this.i++
-		const value = this.matchUntilChar([ '"' ])
+		const value = this.matchUntilChar([ quote ])
 		this.i++
 
 		return { key, value }
