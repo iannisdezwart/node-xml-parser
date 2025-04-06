@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "watch": true,
+    "strict": true,
     "lib": [
       "dom",
       "esnext"

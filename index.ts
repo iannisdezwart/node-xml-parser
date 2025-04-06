@@ -90,7 +90,7 @@ export class XMLNode {
 			tag: tag,
 			attributes: attributes,
 			children: []
-		} as XMLNode
+		} as unknown as XMLNode
 
 		Object.setPrototypeOf(node, XMLNode.prototype)
 
@@ -333,7 +333,7 @@ class XMLBuilder {
 
 	indentation(depth: number) {
 		return (this.options.indentationType == 'tabs' ? '\t' : ' ')
-			.repeat(this.options.indentationSize * depth)
+			.repeat(this.options.indentationSize! * depth)
 	}
 
 	build() {
